@@ -2,3 +2,6 @@
 CDN sources for coh3stats
 
 They are deployed to cdn.coh3stats.com
+
+Anything which is under public folder can be found under the root. 
+For example https://cdn.coh3stats.com/export_flatten/1.png
