@@ -1,15 +1,47 @@
-# coh3-cdn
+# COH3-CDN
 CDN sources for coh3stats
 
 They are deployed to cdn.coh3stats.com
 
-Anything which is under public folder can be found under the root. 
-For example:
-- https://cdn.coh3stats.com/export_flatten/1.png
-- https://cdn.coh3stats.com/export/icons/races/american/infantry/captain_us_portrait.png
+All images are stored under two versions:
+- .png (original)
+- .webp (80% quality - still indistiguishble) 
 
+Anything which is under public folder can be found under the root. 
+For example webp:
+- https://cdn.coh3stats.com/export/icons/races/american/infantry/captain_us_portrait.webp
+- https://cdn.coh3stats.com/export_flatten/captain_us_portrait.webp
+
+For example png:
+- https://cdn.coh3stats.com/export/icons/races/american/infantry/captain_us_portrait.png
+- https://cdn.coh3stats.com/export_flatten/captain_us_portrait.png
 
 ## Emerald Bear (v1.2.0) Bugs
 
 - Missing all the lobby quickmatch rank folder large icons. So far the export script converted the small and medium ones.
 - Had to manually convert the large faction icons. 
+
+## Development
+To copy the files to the flatten folder you can run these unix commands:
+```
+cp export/**/*.webp export_flatten
+cp export/**/*.webp export_flatten
+```
+
+### Converting to .webp 
+For example you can use this tool https://www.xnview.com/en/xnviewmp/#downloads
+
+Steps:
+1. Open the app XnViewMP
+2. Tools --> Batch Converter
+3. Add Folder (select folder) (select only .png files remove any webp)
+4. Click Output tab, format webp, quality 80%
+5. Click on Convert
+
+<img width="867" alt="image" src="https://github.com/cohstats/coh3-cdn/assets/8086995/47d18ef4-124c-44c8-85cf-85bb9a402bb6">
+<img width="863" alt="image" src="https://github.com/cohstats/coh3-cdn/assets/8086995/4d12ccd8-056a-4dd8-aa58-55c22c5d7304">
+<img width="869" alt="image" src="https://github.com/cohstats/coh3-cdn/assets/8086995/48434a05-0659-436c-a6ea-0aef46f9c29e">
+
+
+
+
