@@ -24,9 +24,15 @@ For example png:
 ## Development
 To copy the files to the flatten folder you can run these unix commands:
 ```
-cp export/**/*.webp export_flatten
+cd public
 cp export/**/*.webp export_flatten
 ```
+
+Windows:
+```
+for /r export %f in (*.webp) do copy /Y "%f" export_flatten\
+```
+
 
 ### Converting to .webp 
 For example you can use this tool https://www.xnview.com/en/xnviewmp/#downloads
