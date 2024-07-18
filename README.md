@@ -16,12 +16,34 @@ For example png:
 - https://cdn.coh3stats.com/export/icons/races/american/infantry/captain_us_portrait.png
 - https://cdn.coh3stats.com/export_flatten/captain_us_portrait.png
 
+### Maps
+
+You can find all maps under `https://cdn.coh3stats.com/maps`:
+
+Where the format is `maps/{map_code}/{map_code}.webp` for example:
+- https://cdn.coh3stats.com/maps/benghazi_6p/benghazi_6p.webp
+
+Maps are also marked things on them, there are 3 versions:
+```
+benghazi_6p.marked.color.webp
+benghazi_6p.marked.tm.webp
+benghazi_6p.marked.webp
+```
+*Some maps might not have the marked versions generated yet 
+
+For example:
+- https://cdn.coh3stats.com/maps/benghazi_6p/benghazi_6p.marked.webp
+
 ## Emerald Bear (v1.2.0) Bugs
 
 - Missing all the lobby quickmatch rank folder large icons. So far the export script converted the small and medium ones.
 - Had to manually convert the large faction icons. 
 
 ## Development
+The marked images are taken from [coh-replay-analyzer-discord-bot](https://github.com/Janne252/coh-replay-analyzer-discord-bot/tree/master/data/scenario-preview-images/coh3) project.
+
+
+
 To copy the files to the flatten folder you can run these unix commands:
 ```
 cd public
