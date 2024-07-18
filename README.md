@@ -20,7 +20,7 @@ For example png:
 
 You can find all maps under `https://cdn.coh3stats.com/maps`:
 
-When the format is `maps/{map_code}/{map_code}.webp` for example:
+Where the format is `maps/{map_code}/{map_code}.webp` for example:
 - https://cdn.coh3stats.com/maps/benghazi_6p/benghazi_6p.webp
 
 Maps are also marked things on them, there are 3 versions:
@@ -40,6 +40,10 @@ For example:
 - Had to manually convert the large faction icons. 
 
 ## Development
+The marked images are taken from [coh-replay-analyzer-discord-bot](https://github.com/Janne252/coh-replay-analyzer-discord-bot/tree/master/data/scenario-preview-images/coh3) project.
+
+
+
 To copy the files to the flatten folder you can run these unix commands:
 ```
 cd public
