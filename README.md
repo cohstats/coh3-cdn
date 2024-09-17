@@ -34,11 +34,6 @@ benghazi_6p.marked.webp
 For example:
 - https://cdn.coh3stats.com/maps/benghazi_6p/benghazi_6p.marked.webp
 
-## Emerald Bear (v1.2.0) Bugs
-
-- Missing all the lobby quickmatch rank folder large icons. So far the export script converted the small and medium ones.
-- Had to manually convert the large faction icons. 
-
 ## Development
 The marked images are taken from [coh-replay-analyzer-discord-bot](https://github.com/Janne252/coh-replay-analyzer-discord-bot/tree/master/data/scenario-preview-images/coh3) project.
 
