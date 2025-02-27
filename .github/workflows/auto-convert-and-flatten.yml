@@ -1,0 +1,72 @@
+name: Auto Convert and Flatten Images
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'public/export/**'  # Only trigger on changes in export directory
+
+jobs:
+  process-images:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          
+      - name: Install dependencies
+        run: |
+          cd scripts
+          pip install -r requirements.txt
+          
+      - name: Run WebP conversion script
+        run: |
+          cd scripts
+          python convert_to_webp.py
+          
+      - name: Run flatten script
+        run: |
+          cd scripts
+          python flatten_export.py
+          
+      - name: Create new branch and commit changes
+        run: |
+          # Configure git
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          
+          # Create new branch with timestamp
+          BRANCH_NAME="auto-update-$(date +'%Y%m%d-%H%M%S')"
+          git checkout -b $BRANCH_NAME
+          
+          # Add and commit changes
+          git add public/
+          
+          # Only proceed if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          git commit -m "Auto: Convert PNG to WebP and flatten export directory"
+          
+          # Push the new branch
+          git push origin $BRANCH_NAME
+          
+          # Create a pull request using GitHub CLI
+          gh pr create --title "Auto: Image processing update" \
+                      --body "This PR was automatically created by the image processing workflow.
+                      
+                      Changes made:
+                      - Converted new PNG files to WebP format
+                      - Updated flattened export directory" \
+                      --base master \
+                      --head $BRANCH_NAME
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
