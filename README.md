@@ -37,35 +37,10 @@ For example:
 ## Development
 The marked images are taken from [coh-replay-analyzer-discord-bot](https://github.com/Janne252/coh-replay-analyzer-discord-bot/tree/master/data/scenario-preview-images/coh3) project.
 
+### Automated .webp conversion and flatten folder
+All you have to do is to commit new files in /public/export folder and this will trigger the GH Action which will create a new automated PR. 
 
-
-To copy the files to the flatten folder you can run these unix commands:
-```
-cd public
-cp export/**/*.webp export_flatten
-```
-
-Windows:
-```
-for /r export %f in (*.webp) do copy /Y "%f" export_flatten\
-```
-
-
-### Converting to .webp 
-For example you can use this tool https://www.xnview.com/en/xnviewmp/#downloads
-
-Steps:
-1. Open the app XnViewMP
-2. Tools --> Batch Converter
-3. Add Folder (select folder) (select only .png files remove any webp)
-4. Click Output tab, format webp, quality 80%
-5. Click on Convert
-
-<img width="867" alt="image" src="https://github.com/cohstats/coh3-cdn/assets/8086995/47d18ef4-124c-44c8-85cf-85bb9a402bb6">
-<img width="863" alt="image" src="https://github.com/cohstats/coh3-cdn/assets/8086995/4d12ccd8-056a-4dd8-aa58-55c22c5d7304">
-<img width="869" alt="image" src="https://github.com/cohstats/coh3-cdn/assets/8086995/48434a05-0659-436c-a6ea-0aef46f9c29e">
-
-### Automated PNG to WebP Conversion
+### Scripts PNG to WebP Conversion
 You can use the provided Python script to automatically convert PNG files to WebP format. The script will only convert PNG files that don't already have a WebP version.
 
 Requirements:
@@ -98,5 +73,29 @@ The script will:
 Note: This is an alternative to using XnViewMP and provides an automated way to convert only missing WebP files.
 
 
+### Manual flatten folder copy
 
+To copy the files to the flatten folder you can run these unix commands:
+```
+cd public
+cp export/**/*.webp export_flatten
+```
 
+Windows:
+```
+for /r export %f in (*.webp) do copy /Y "%f" export_flatten\
+```
+
+### Converting to .webp using tools
+For example you can use this tool https://www.xnview.com/en/xnviewmp/#downloads
+
+Steps:
+1. Open the app XnViewMP
+2. Tools --> Batch Converter
+3. Add Folder (select folder) (select only .png files remove any webp)
+4. Click Output tab, format webp, quality 80%
+5. Click on Convert
+
+<img width="867" alt="image" src="https://github.com/cohstats/coh3-cdn/assets/8086995/47d18ef4-124c-44c8-85cf-85bb9a402bb6">
+<img width="863" alt="image" src="https://github.com/cohstats/coh3-cdn/assets/8086995/4d12ccd8-056a-4dd8-aa58-55c22c5d7304">
+<img width="869" alt="image" src="https://github.com/cohstats/coh3-cdn/assets/8086995/48434a05-0659-436c-a6ea-0aef46f9c29e">
