@@ -65,6 +65,38 @@ Steps:
 <img width="863" alt="image" src="https://github.com/cohstats/coh3-cdn/assets/8086995/4d12ccd8-056a-4dd8-aa58-55c22c5d7304">
 <img width="869" alt="image" src="https://github.com/cohstats/coh3-cdn/assets/8086995/48434a05-0659-436c-a6ea-0aef46f9c29e">
 
+### Automated PNG to WebP Conversion
+You can use the provided Python script to automatically convert PNG files to WebP format. The script will only convert PNG files that don't already have a WebP version.
+
+Requirements:
+- Python 3.6 or higher
+- pip (Python package installer)
+
+Steps to use the automated converter:
+1. Navigate to the scripts directory:
+   ```bash
+   cd scripts
+   ```
+
+2. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Run the conversion script:
+   ```bash
+   python convert_to_webp.py
+   ```
+
+The script will:
+- Automatically find all PNG files in the public directory and its subdirectories
+- Convert only PNG files that don't have a corresponding WebP version
+- Use 85% quality for the WebP conversion
+- Handle images with transparency
+- Print progress information during conversion
+
+Note: This is an alternative to using XnViewMP and provides an automated way to convert only missing WebP files.
+
 
 
 
