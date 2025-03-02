@@ -40,6 +40,42 @@ The marked images are taken from [coh-replay-analyzer-discord-bot](https://githu
 ### Automated .webp conversion and flatten folder
 All you have to do is to commit new files in /public/export folder and this will trigger the GH Action which will create a new automated PR. 
 
+### Script to sync map images
+You can use the provided Python script to automatically sync map images from the coh-replay-analyzer-discord-bot repository and convert them to WebP format.
+
+Requirements:
+- Python 3.6 or higher
+- pip (Python package installer)
+
+Steps to sync map images:
+1. Navigate to the scripts directory:
+   ```bash
+   cd scripts
+   ```
+
+2. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Run the sync script:
+   ```bash
+   python sync_map_images.py
+   ```
+
+   To overwrite existing files, use the --overwrite flag:
+   ```bash
+   python sync_map_images.py --overwrite
+   ```
+
+The script will:
+- Fetch map images from the coh-replay-analyzer-discord-bot repository
+- Convert images to WebP format with 85% quality
+- Create map-specific folders under public/maps/
+- Handle all three image variants (base, colored, and tm)
+- Skip existing files unless --overwrite is used
+- Print progress and summary information
+
 ### Scripts PNG to WebP Conversion
 You can use the provided Python script to automatically convert PNG files to WebP format. The script will only convert PNG files that don't already have a WebP version.
 
