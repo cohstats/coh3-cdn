@@ -1,45 +1,129 @@
 {
     "stats": {
-        "rrtex": 6837,
-        "converted": 6828,
-        "failed": 9
+        "rrtex": 7138,
+        "converted": 7108,
+        "failed": 30
     },
     "details": {
         "failed": [
             {
-                "path": "D:\\coh_modding\\coh3_ui_latest\\icons\\buttons\\btn_defensive_bg.rrtex",
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\buttons\\btn_defensive_bg.rrtex",
                 "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: unknown compression method"
             },
             {
-                "path": "D:\\coh_modding\\coh3_ui_latest\\icons\\common\\races\\hud_flag_british.rrtex",
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\common\\factions\\american_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\common\\factions\\british_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\common\\races\\hud_flag_british.rrtex",
                 "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: unknown compression method"
             },
             {
-                "path": "D:\\coh_modding\\coh3_ui_latest\\icons\\cursor\\modal_build_cant\\modal_build_cant_01_tooltip.rrtex",
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\cursor\\modal_build_cant\\modal_build_cant_01_tooltip.rrtex",
                 "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: unknown compression method"
             },
             {
-                "path": "D:\\coh_modding\\coh3_ui_latest\\icons\\cursor\\modal_reinforce\\modal_reinforce_01_tooltip.rrtex",
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\cursor\\modal_reinforce\\modal_reinforce_01_tooltip.rrtex",
                 "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: unknown compression method"
             },
             {
-                "path": "D:\\coh_modding\\coh3_ui_latest\\icons\\executable\\black\\game_icon_16_black.rrtex",
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\executable\\black\\game_icon_16_black.rrtex",
                 "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: unknown compression method"
             },
             {
-                "path": "D:\\coh_modding\\coh3_ui_latest\\icons\\executable\\white\\game_icon_white_16.rrtex",
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\executable\\white\\game_icon_white_16.rrtex",
                 "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: unknown compression method"
             },
             {
-                "path": "D:\\coh_modding\\coh3_ui_latest\\icons\\hud\\supply_icon.rrtex",
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\hud\\supply_icon.rrtex",
                 "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: unknown compression method"
             },
             {
-                "path": "D:\\coh_modding\\coh3_ui_latest\\icons\\hud\\grey_bevel_bg\\center.rrtex",
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\hud\\grey_bevel_bg\\center.rrtex",
                 "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: unknown compression method"
             },
             {
-                "path": "D:\\coh_modding\\coh3_ui_latest\\images\\common\\races\\hud_flag_british.rrtex",
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\lobby\\playercard\\badge\\content_creator_badge_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\lobby\\playercard\\badge\\get_together_badge_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\lobby\\playercard\\badge\\map_makers_badge_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\lobby\\playercard\\badge\\player_badge_drawingthevictory_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\lobby\\playercard\\badge\\player_badge_handle_with_care_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\lobby\\playercard\\badge\\player_badge_night_bombers_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\lobby\\playercard\\badge\\player_badge_pride_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\lobby\\playercard\\badge\\player_badge_reinforcements_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\lobby\\playercard\\badge\\player_canadianlight_badge_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\lobby\\playercard\\badge\\player_p47_badge_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\lobby\\playercard\\badge\\ride_or_die_badge_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\races\\afrika_corps\\battlegroups\\armored_ak_icon_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\races\\afrika_corps\\battlegroups\\combined_arms_ak_icon_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\races\\afrika_corps\\battlegroups\\italian_infantry_ak_icon_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\races\\british\\battlegroups\\air_and_sea_uk_icon_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\races\\british\\battlegroups\\armored_uk_icon_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\races\\german\\battlegroups\\breakthrough_ger_icon_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\races\\german\\battlegroups\\luftwaffe_ger_icon_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\icons\\races\\german\\battlegroups\\mechanized_ger_icon_mipped.rrtex",
+                "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: incorrect header check"
+            },
+            {
+                "path": "D:\\COH3_Modding\\coh3-ui-gitless\\images\\common\\races\\hud_flag_british.rrtex",
                 "exception": "convert_rrtex failed.\nException: Error -3 while decompressing data: unknown compression method"
             }
         ]
