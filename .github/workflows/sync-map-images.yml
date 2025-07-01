@@ -30,12 +30,6 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
           
-          # Check if there are any changes
-          if git diff --quiet && git diff --staged --quiet; then
-            echo "No changes detected. No new map images to sync."
-            exit 0
-          fi
-          
           # Create new branch with timestamp
           BRANCH_NAME="auto-sync-map-images-$(date +'%Y%m%d-%H%M%S')"
           git checkout -b $BRANCH_NAME
@@ -43,7 +37,7 @@ jobs:
           # Add all changes in public/maps directory
           git add public/maps/
           
-          # Double-check if there are changes to commit after staging
+          # Check the changes
           if git diff --staged --quiet; then
             echo "No changes to commit after staging"
             exit 0
