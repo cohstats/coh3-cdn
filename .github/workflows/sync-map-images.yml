@@ -1,0 +1,84 @@
+name: Sync Map Images
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  sync-map-images:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          
+      - name: Install dependencies
+        run: |
+          cd scripts
+          pip install -r requirements.txt
+          
+      - name: Run map images sync script
+        run: |
+          cd scripts
+          python sync_map_images.py
+          
+      - name: Check for changes and create PR if needed
+        run: |
+          # Configure git
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          
+          # Check if there are any changes
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes detected. No new map images to sync."
+            exit 0
+          fi
+          
+          # Create new branch with timestamp
+          BRANCH_NAME="auto-sync-map-images-$(date +'%Y%m%d-%H%M%S')"
+          git checkout -b $BRANCH_NAME
+          
+          # Add all changes in public/maps directory
+          git add public/maps/
+          
+          # Double-check if there are changes to commit after staging
+          if git diff --staged --quiet; then
+            echo "No changes to commit after staging"
+            exit 0
+          fi
+          
+          # Commit changes
+          git commit -m "Auto: Sync new map images from coh-replay-analyzer repository
+
+          - Downloaded and converted new map images to WebP format
+          - Added map-specific folders under public/maps/
+          - Processed base, colored, and tm variants where available"
+          
+          # Push the new branch
+          git push origin $BRANCH_NAME
+          
+          # Create a pull request using GitHub CLI
+          gh pr create --title "Auto: Sync new map images" \
+                      --body "This PR was automatically created by the map images sync workflow.
+                      
+                      ## Changes made:
+                      - Downloaded new map images from [coh-replay-analyzer-discord-bot](https://github.com/Janne252/coh-replay-analyzer-discord-bot/tree/master/data/scenario-preview-images/coh3) repository
+                      - Converted images to WebP format with 85% quality
+                      - Created map-specific folders under \`public/maps/\`
+                      - Processed all available image variants (base, colored, and tm)
+                      
+                      ## Script details:
+                      - Script: \`scripts/sync_map_images.py\`
+                      - Source: External repository map images
+                      - Format: WebP conversion with transparency preservation
+                      - Quality: 85% WebP compression
+                      
+                      Please review the changes and merge if everything looks correct." \
+                      --base master \
+                      --head $BRANCH_NAME
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
