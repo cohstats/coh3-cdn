@@ -18,13 +18,11 @@ jobs:
           
       - name: Install dependencies
         run: |
-          cd scripts
-          pip install -r requirements.txt
+          pip install -r scripts/requirements.txt
           
       - name: Run map images sync script
         run: |
-          cd scripts
-          python sync_map_images.py
+          python scripts/sync_map_images.py
           
       - name: Check for changes and create PR if needed
         run: |
