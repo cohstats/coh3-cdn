@@ -1,0 +1,324 @@
+name: Extract and Convert Game Images
+
+on:
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  extract_images:
+    name: Extract and Convert COH3 Images
+    runs-on: windows-2022 # Using Windows runner to handle Windows executables
+    timeout-minutes: 180 # Extended timeout for game download and image extraction
+
+    env:
+      STEAM_USERNAME: ${{ secrets.STEAM_USERNAME_COH3 }}
+      STEAM_PASSWORD: ${{ secrets.STEAM_PASSWORD_COH3 }}
+      COH3_APP_ID: 1677280
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r scripts/requirements.txt
+        shell: pwsh
+
+      - name: Create SteamCMD directory
+        run: mkdir -p steamcmd
+        shell: bash
+
+      - name: Download SteamCMD
+        run: |
+          Invoke-WebRequest -Uri "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip" -OutFile "steamcmd.zip"
+          Expand-Archive -Path "steamcmd.zip" -DestinationPath "steamcmd" -Force
+        shell: pwsh
+
+      - name: Create game directory
+        run: mkdir -p coh3
+        shell: bash
+
+      - name: Initialize SteamCMD
+        run: |
+          .\steamcmd\steamcmd.exe +quit
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 2
+
+      - name: Download COH3 using SteamCMD
+        id: download_game
+        timeout-minutes: 90
+        run: |
+          # Download the game using SteamCMD
+          .\steamcmd\steamcmd.exe +@NoPromptForPassword 1 +@ShutdownOnFailedCommand 1 +force_install_dir ./coh3 +login $env:STEAM_USERNAME $env:STEAM_PASSWORD +app_update $env:COH3_APP_ID validate +quit
+        shell: pwsh
+
+      - name: Verify game download
+        id: verify_game
+        run: |
+          $exePath = ".\coh3\RelicCoH3.exe"
+          if (Test-Path $exePath) {
+            echo "GAME_DOWNLOADED=true" >> $env:GITHUB_OUTPUT
+            echo "Game successfully downloaded"
+            
+            # Get game version
+            $versionInfo = (Get-Item $exePath).VersionInfo
+            $fileVersion = $versionInfo.FileVersion
+            echo "COH3_VERSION=$fileVersion" >> $env:GITHUB_OUTPUT
+            echo "COH3 Version: $fileVersion"
+            
+            # Extract minor version
+            if ($fileVersion -match '(\d+)\.(\d+)\.(\d+)\.(\d+)') {
+              $minorVersion = $matches[3]
+              echo "COH3_MINOR_VERSION=$minorVersion" >> $env:GITHUB_OUTPUT
+              echo "COH3 Minor Version: $minorVersion"
+            }
+          } else {
+            echo "GAME_DOWNLOADED=false" >> $env:GITHUB_OUTPUT
+            echo "ERROR: Game download failed - RelicCoH3.exe not found"
+            exit 1
+          }
+        shell: pwsh
+
+      - name: Clone coh3-image-extractor repository
+        if: steps.verify_game.outputs.GAME_DOWNLOADED == 'true'
+        run: |
+          git clone https://github.com/cohstats/coh3-image-extractor.git image-extractor
+          echo "Image extractor repository cloned successfully"
+        shell: pwsh
+
+      - name: Install image extractor dependencies
+        if: steps.verify_game.outputs.GAME_DOWNLOADED == 'true'
+        run: |
+          cd image-extractor
+          pip install -r requirements.txt
+        shell: pwsh
+
+      - name: Extract RRTEX files from UI.sga using Essence tools
+        if: steps.verify_game.outputs.GAME_DOWNLOADED == 'true'
+        run: |
+          # Check if Essence Editor tools are available in the game installation
+          $essenceEditorPath = ".\coh3\EssenceEditor.exe"
+          
+          if (Test-Path $essenceEditorPath) {
+            echo "Essence Editor found at: $essenceEditorPath"
+          } else {
+            echo "WARNING: Essence Editor not found. Will attempt alternative extraction method."
+          }
+          
+          # Create directory for extracted RRTEX files
+          New-Item -Path "extracted_ui" -ItemType Directory -Force
+          
+          # Check if UI.sga exists
+          $uiSgaPath = ".\coh3\anvil\archives\UI.sga"
+          if (Test-Path $uiSgaPath) {
+            echo "UI.sga found at: $uiSgaPath"
+            echo "UI_SGA_EXISTS=true" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "ERROR: UI.sga not found at expected location"
+            echo "UI_SGA_EXISTS=false" >> $env:GITHUB_OUTPUT
+            exit 1
+          }
+        shell: pwsh
+
+      - name: Extract UI.sga using AOEMods.Essence tool
+        if: steps.verify_game.outputs.GAME_DOWNLOADED == 'true'
+        run: |
+          # Extract AOEMods.Essence tool from local tools directory
+          echo "Extracting AOEMods.Essence tool from tools/AOEMods.Essence-0.7.0.zip..."
+          Expand-Archive -Path "tools/AOEMods.Essence-0.7.0.zip" -DestinationPath "tools/AOEMods.Essence" -Force
+
+          # Extract UI.sga
+          echo "Extracting UI.sga..."
+          & ".\tools\AOEMods.Essence\AOEMods.Essence.CLI.exe" sga-unpack ".\coh3\anvil\archives\UI.sga" "./extracted_ui"
+
+          # Verify extraction
+          $rrtexFiles = Get-ChildItem -Path "extracted_ui" -Filter "*.rrtex" -Recurse
+          echo "Found $($rrtexFiles.Count) RRTEX files"
+
+          if ($rrtexFiles.Count -eq 0) {
+            echo "ERROR: No RRTEX files found after extraction"
+            exit 1
+          }
+        shell: pwsh
+
+      - name: Convert RRTEX files to WebP images
+        if: steps.verify_game.outputs.GAME_DOWNLOADED == 'true'
+        run: |
+          # Run the image extractor script to convert RRTEX to WebP
+          cd image-extractor
+          
+          echo "Converting RRTEX files to WebP format..."
+          python scripts/main.py --src ../extracted_ui --format webp --dst ../temp_export --threads 8
+          
+          # Check conversion results
+          if (Test-Path "../temp_export/logreport.json") {
+            echo "Conversion completed. Log report:"
+            Get-Content "../temp_export/logreport.json"
+          }
+        shell: pwsh
+
+      - name: Organize extracted images
+        if: steps.verify_game.outputs.GAME_DOWNLOADED == 'true'
+        run: |
+          # Copy extracted images to public/export directory, maintaining folder structure
+          echo "Organizing extracted images..."
+          
+          # Ensure public/export directory exists
+          New-Item -Path "public/export" -ItemType Directory -Force
+          
+          # Copy all WebP files from temp_export to public/export
+          if (Test-Path "temp_export") {
+            $webpFiles = Get-ChildItem -Path "temp_export" -Filter "*.webp" -Recurse
+            echo "Found $($webpFiles.Count) WebP files to copy"
+            
+            foreach ($file in $webpFiles) {
+              # Get relative path from temp_export
+              $relativePath = $file.FullName.Substring((Resolve-Path "temp_export").Path.Length + 1)
+              $destPath = Join-Path "public/export" $relativePath
+              
+              # Create destination directory if it doesn't exist
+              $destDir = Split-Path $destPath -Parent
+              if (-not (Test-Path $destDir)) {
+                New-Item -Path $destDir -ItemType Directory -Force | Out-Null
+              }
+              
+              # Copy file
+              Copy-Item $file.FullName $destPath -Force
+            }
+            
+            echo "Images organized successfully"
+          } else {
+            echo "ERROR: temp_export directory not found"
+            exit 1
+          }
+        shell: pwsh
+
+      - name: Flatten images to export_flatten directory
+        if: steps.verify_game.outputs.GAME_DOWNLOADED == 'true'
+        run: |
+          echo "Flattening images to export_flatten directory..."
+          python scripts/flatten_export.py
+        shell: pwsh
+
+      - name: Generate summary report
+        if: steps.verify_game.outputs.GAME_DOWNLOADED == 'true'
+        run: |
+          echo "Generating extraction summary..."
+          
+          $exportFiles = Get-ChildItem -Path "public/export" -Filter "*.webp" -Recurse
+          $flattenFiles = Get-ChildItem -Path "public/export_flatten" -Filter "*.webp" -Recurse
+          
+          echo "Extraction Summary:"
+          echo "==================="
+          echo "Game Version: ${{ steps.verify_game.outputs.COH3_VERSION }}"
+          echo "Minor Version: ${{ steps.verify_game.outputs.COH3_MINOR_VERSION }}"
+          echo "Total WebP files in export: $($exportFiles.Count)"
+          echo "Total WebP files in export_flatten: $($flattenFiles.Count)"
+          
+          # Save summary to file for PR description
+          @"
+          ## Image Extraction Summary
+          
+          - **Game Version**: ${{ steps.verify_game.outputs.COH3_VERSION }}
+          - **Minor Version**: ${{ steps.verify_game.outputs.COH3_MINOR_VERSION }}
+          - **Total WebP files in export**: $($exportFiles.Count)
+          - **Total WebP files in export_flatten**: $($flattenFiles.Count)
+          - **Extraction Date**: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
+          
+          ### Process
+          1. Downloaded COH3 game files using SteamCMD
+          2. Extracted UI.sga archive using AOEMods.Essence tool
+          3. Converted RRTEX files to WebP format using coh3-image-extractor
+          4. Organized images in structured and flattened directories
+          
+          ### Files Changed
+          - Updated images in \`public/export/\` (structured)
+          - Updated images in \`public/export_flatten/\` (flattened)
+          "@ | Out-File -FilePath "extraction_summary.md" -Encoding UTF8
+        shell: pwsh
+
+      - name: Setup GitHub CLI
+        run: |
+          choco install gh -y
+        shell: pwsh
+
+      - name: Create Pull Request with extracted images
+        if: steps.verify_game.outputs.GAME_DOWNLOADED == 'true'
+        run: |
+          # Configure git
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+
+          # Create new branch with timestamp and version
+          $BRANCH_NAME="image-extraction-v${{ steps.verify_game.outputs.COH3_MINOR_VERSION }}-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+          git checkout -b $BRANCH_NAME
+
+          # Add all changes in public directory
+          git add public/export/
+          git add public/export_flatten/
+
+          # Check if there are changes to commit
+          $changes = git diff --staged --name-only
+          if (-not $changes) {
+            echo "No changes detected. Skipping PR creation."
+            exit 0
+          }
+
+          echo "Changes detected in the following files:"
+          echo $changes
+
+          # Commit changes
+          git commit -m "feat: extract and convert game images to WebP (v${{ steps.verify_game.outputs.COH3_MINOR_VERSION }})
+
+          - Extracted UI images from COH3 game files
+          - Converted RRTEX files to WebP format
+          - Updated structured export directory
+          - Updated flattened export directory
+          - Game version: ${{ steps.verify_game.outputs.COH3_VERSION }}"
+
+          # Push the new branch
+          git push origin $BRANCH_NAME
+
+          # Read summary for PR body
+          $prBody = Get-Content "extraction_summary.md" -Raw
+
+          # Create pull request using GitHub CLI
+          gh pr create --title "Extract and convert game images (v${{ steps.verify_game.outputs.COH3_MINOR_VERSION }})" `
+                      --body $prBody `
+                      --base master `
+                      --head $BRANCH_NAME
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup temporary files
+        if: always()
+        run: |
+          echo "Cleaning up temporary files..."
+          
+          # Remove large temporary directories to free up space
+          if (Test-Path "steamcmd") {
+            Remove-Item -Path "steamcmd" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "coh3") {
+            Remove-Item -Path "coh3" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "extracted_ui") {
+            Remove-Item -Path "extracted_ui" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "temp_export") {
+            Remove-Item -Path "temp_export" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "image-extractor") {
+            Remove-Item -Path "image-extractor" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          
+          echo "Cleanup completed"
+        shell: pwsh
+        continue-on-error: true
+

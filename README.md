@@ -37,8 +37,33 @@ For example:
 ## Development
 The marked images are taken from [coh-replay-analyzer-discord-bot](https://github.com/Janne252/coh-replay-analyzer-discord-bot/tree/master/data/scenario-preview-images/coh3) project.
 
+### Extract Game Images Workflow (Manual)
+A comprehensive GitHub Actions workflow is available to automatically extract and convert game images from Company of Heroes 3. This workflow can be triggered manually and will:
+
+1. Download the COH3 game files using SteamCMD
+2. Extract UI.sga archive using AOEMods.Essence tool
+3. Convert RRTEX files to WebP format using [coh3-image-extractor](https://github.com/cohstats/coh3-image-extractor)
+4. Organize images in both structured (`public/export/`) and flattened (`public/export_flatten/`) directories
+5. Automatically create a Pull Request with all extracted images
+
+**To run the workflow:**
+1. Go to the "Actions" tab in this repository
+2. Select "Extract and Convert Game Images" workflow
+3. Click "Run workflow" button
+4. Wait for the workflow to complete (may take 1-3 hours depending on download speed)
+5. Review and merge the automatically created Pull Request
+
+**Requirements:**
+- Repository secrets must be configured:
+  - `STEAM_USERNAME_COH3`: Your Steam account username
+  - `STEAM_PASSWORD_COH3`: Your Steam account password
+- The workflow runs on Windows runners to handle Windows executables
+- Requires approximately 60-80 GB of disk space for game files and extraction
+
+**Note:** This workflow is designed for periodic updates when new game versions are released. The extracted images will be automatically converted to WebP format and organized in the appropriate directories.
+
 ### Automated .webp conversion and flatten folder
-All you have to do is to commit new files in /public/export folder and this will trigger the GH Action which will create a new automated PR. 
+All you have to do is to commit new files in /public/export folder and this will trigger the GH Action which will create a new automated PR.
 
 ### Script to sync map images
 You can use the provided Python script to automatically sync map images from the coh-replay-analyzer-discord-bot repository and convert them to WebP format.
