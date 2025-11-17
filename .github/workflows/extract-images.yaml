@@ -126,9 +126,22 @@ jobs:
           echo "Extracting AOEMods.Essence tool from tools/AOEMods.Essence-0.7.0.zip..."
           Expand-Archive -Path "tools/AOEMods.Essence-0.7.0.zip" -DestinationPath "tools/AOEMods.Essence" -Force
 
+          # List extracted contents to verify structure
+          echo "Listing extracted contents:"
+          Get-ChildItem -Path "tools/AOEMods.Essence" -Recurse | Select-Object FullName
+
+          # Find the CLI executable
+          $cliExe = Get-ChildItem -Path "tools/AOEMods.Essence" -Filter "AOEMods.Essence.CLI.exe" -Recurse | Select-Object -First 1
+          if (-not $cliExe) {
+            echo "ERROR: AOEMods.Essence.CLI.exe not found in extracted files"
+            exit 1
+          }
+
+          echo "Found CLI executable at: $($cliExe.FullName)"
+
           # Extract UI.sga - note the path is steamcmd\coh3
           echo "Extracting UI.sga..."
-          & ".\tools\AOEMods.Essence\AOEMods.Essence.CLI.exe" sga-unpack ".\steamcmd\coh3\anvil\archives\UI.sga" "./extracted_ui"
+          & $cliExe.FullName sga-unpack ".\steamcmd\coh3\anvil\archives\UI.sga" "./extracted_ui"
 
           # Verify extraction
           $rrtexFiles = Get-ChildItem -Path "extracted_ui" -Filter "*.rrtex" -Recurse
