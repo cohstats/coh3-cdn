@@ -172,32 +172,38 @@ jobs:
       - name: Organize extracted images
         if: steps.check_exe.outputs.EXE_EXISTS == 'true'
         run: |
-          # Copy extracted images to public/export directory, maintaining folder structure
+          # Copy extracted images to public/export directory, stripping 'ui/' prefix
           echo "Organizing extracted images..."
-          
+
           # Ensure public/export directory exists
           New-Item -Path "public/export" -ItemType Directory -Force
-          
+
           # Copy all WebP files from temp_export to public/export
           if (Test-Path "temp_export") {
             $webpFiles = Get-ChildItem -Path "temp_export" -Filter "*.webp" -Recurse
             echo "Found $($webpFiles.Count) WebP files to copy"
-            
+
             foreach ($file in $webpFiles) {
               # Get relative path from temp_export
               $relativePath = $file.FullName.Substring((Resolve-Path "temp_export").Path.Length + 1)
+
+              # Strip 'ui/' or 'ui\' prefix if present
+              if ($relativePath -match '^ui[/\\](.*)$') {
+                $relativePath = $matches[1]
+              }
+
               $destPath = Join-Path "public/export" $relativePath
-              
+
               # Create destination directory if it doesn't exist
               $destDir = Split-Path $destPath -Parent
               if (-not (Test-Path $destDir)) {
                 New-Item -Path $destDir -ItemType Directory -Force | Out-Null
               }
-              
+
               # Copy file
               Copy-Item $file.FullName $destPath -Force
             }
-            
+
             echo "Images organized successfully"
           } else {
             echo "ERROR: temp_export directory not found"
