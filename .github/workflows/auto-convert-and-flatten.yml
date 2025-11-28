@@ -1,6 +1,7 @@
 name: Auto Convert and Flatten Images
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - master
