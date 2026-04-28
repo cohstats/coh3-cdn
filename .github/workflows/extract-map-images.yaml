@@ -1,0 +1,266 @@
+name: Extract Map Images from COH3
+
+on:
+  workflow_dispatch: # Manual trigger only
+
+jobs:
+  extract_map_images:
+    name: Extract and Convert COH3 Map Images
+    runs-on: windows-2022 # Using Windows runner to handle Windows executables
+    timeout-minutes: 180 # Extended timeout for game download and map extraction
+
+    env:
+      STEAM_USERNAME: ${{ secrets.STEAM_USERNAME_COH3 }}
+      STEAM_PASSWORD: ${{ secrets.STEAM_PASSWORD_COH3 }}
+      COH3_APP_ID: 1677280
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r scripts/requirements.txt
+        shell: pwsh
+
+      - name: Create SteamCMD directory
+        run: mkdir -p steamcmd
+        shell: bash
+
+      - name: Download SteamCMD
+        run: |
+          Invoke-WebRequest -Uri "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip" -OutFile "steamcmd.zip"
+          Expand-Archive -Path "steamcmd.zip" -DestinationPath "steamcmd" -Force
+        shell: pwsh
+
+      - name: Create game directory
+        run: mkdir -p coh3
+        shell: bash
+
+      - name: Initialize SteamCMD
+        run: |
+          .\steamcmd\steamcmd.exe +quit
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 2
+
+      - name: Download COH3 using SteamCMD
+        id: download_game
+        timeout-minutes: 60
+        run: |
+          # Use direct command line approach with all parameters - force_install_dir BEFORE login
+          .\steamcmd\steamcmd.exe +@NoPromptForPassword 1 +@ShutdownOnFailedCommand 1 +force_install_dir ./coh3 +login $env:STEAM_USERNAME $env:STEAM_PASSWORD +app_update $env:COH3_APP_ID validate +quit
+        shell: pwsh
+
+      - name: List SteamCMD logs
+        run: |
+          echo "SteamCMD logs:"
+          if (Test-Path "steamcmd\logs") {
+            Get-ChildItem -Path "steamcmd\logs" -Recurse | ForEach-Object {
+              echo "Log file: $($_.FullName)"
+              Get-Content $_.FullName
+            }
+          } else {
+            echo "No logs directory found"
+          }
+        shell: pwsh
+        continue-on-error: true
+
+      - name: Check RelicCoH3.exe
+        id: check_exe
+        run: |
+          # Direct path to the executable
+          $exePath = ".\steamcmd\coh3\RelicCoH3.exe"
+          if (Test-Path $exePath) {
+            echo "EXE_EXISTS=true" >> $env:GITHUB_OUTPUT
+            echo "RelicCoH3.exe found at the expected location"
+          } else {
+            echo "EXE_EXISTS=false" >> $env:GITHUB_OUTPUT
+            echo "RelicCoH3.exe not found at the expected location"
+          }
+        shell: pwsh
+
+      - name: Get COH3 Version
+        id: get_version
+        if: steps.check_exe.outputs.EXE_EXISTS == 'true'
+        run: |
+          $exePath = ".\steamcmd\coh3\RelicCoH3.exe"
+          $versionInfo = (Get-Item $exePath).VersionInfo
+          $fileVersion = $versionInfo.FileVersion
+          echo "COH3_VERSION=$fileVersion" >> $env:GITHUB_OUTPUT
+          echo "COH3 Version: $fileVersion"
+
+          # Extract minor version using regex
+          if ($fileVersion -match '(\d+)\.(\d+)\.(\d+)\.(\d+)') {
+            $minorVersion = $matches[3]
+            echo "COH3_MINOR_VERSION=$minorVersion" >> $env:GITHUB_OUTPUT
+            echo "COH3 Minor Version: $minorVersion"
+          } else {
+            echo "Failed to extract minor version from $fileVersion"
+          }
+        shell: pwsh
+
+      - name: Clone coh3-image-extractor repository
+        if: steps.check_exe.outputs.EXE_EXISTS == 'true'
+        run: |
+          git clone https://github.com/cohstats/coh3-image-extractor.git image-extractor
+          echo "Image extractor repository cloned successfully"
+        shell: pwsh
+
+      - name: Install image extractor dependencies
+        if: steps.check_exe.outputs.EXE_EXISTS == 'true'
+        run: |
+          cd image-extractor
+          pip install -r requirements.txt
+        shell: pwsh
+
+      - name: Extract ScenariosMP.sga using AOEMods.Essence tool
+        if: steps.check_exe.outputs.EXE_EXISTS == 'true'
+        run: |
+          # Extract AOEMods.Essence tool from local tools directory
+          echo "Extracting AOEMods.Essence tool from tools/AOEMods.Essence-0.7.0.zip..."
+          Expand-Archive -Path "tools/AOEMods.Essence-0.7.0.zip" -DestinationPath "tools/AOEMods.Essence" -Force
+
+          # List extracted contents to verify structure
+          echo "Listing extracted contents:"
+          Get-ChildItem -Path "tools/AOEMods.Essence" -Recurse | Select-Object FullName
+
+          # Find the CLI executable
+          $cliExe = Get-ChildItem -Path "tools/AOEMods.Essence" -Filter "AOEMods.Essence.CLI.exe" -Recurse | Select-Object -First 1
+          if (-not $cliExe) {
+            echo "ERROR: AOEMods.Essence.CLI.exe not found in extracted files"
+            exit 1
+          }
+
+          echo "Found CLI executable at: $($cliExe.FullName)"
+
+          # Extract ScenariosMP.sga
+          echo "Extracting ScenariosMP.sga..."
+          & $cliExe.FullName sga-unpack ".\steamcmd\coh3\anvil\archives\ScenariosMP.sga" "./extracted_scenarios"
+
+          # Verify extraction found expected folders
+          $multiplayerPath = ".\extracted_scenarios\data\scenarios\multiplayer"
+          if (Test-Path $multiplayerPath) {
+            echo "Successfully extracted scenarios. Found multiplayer folder."
+            $mapFolders = Get-ChildItem -Path $multiplayerPath -Directory
+            echo "Found $($mapFolders.Count) map folders"
+          } else {
+            echo "ERROR: Multiplayer folder not found after extraction"
+            exit 1
+          }
+        shell: pwsh
+
+      - name: Run map image extraction script
+        if: steps.check_exe.outputs.EXE_EXISTS == 'true'
+        run: |
+          echo "Running map image extraction script..."
+          python scripts/extract_map_images.py --src "./extracted_scenarios" --image-extractor-path "./image-extractor" --output-dir "public/maps"
+        shell: pwsh
+
+      - name: Generate extraction summary
+        if: steps.check_exe.outputs.EXE_EXISTS == 'true'
+        run: |
+          echo "Extraction completed. Summary:"
+          if (Test-Path "map_extraction_summary.md") {
+            Get-Content "map_extraction_summary.md"
+          } else {
+            echo "No summary file generated"
+          }
+        shell: pwsh
+
+      - name: Setup GitHub CLI
+        run: |
+          choco install gh -y
+        shell: pwsh
+
+      - name: Create Pull Request with extracted map images
+        if: steps.check_exe.outputs.EXE_EXISTS == 'true'
+        run: |
+          # Configure git
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+
+          # Create new branch with timestamp and version
+          $BRANCH_NAME="map-extraction-v${{ steps.get_version.outputs.COH3_MINOR_VERSION }}-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+          git checkout -b $BRANCH_NAME
+
+          # Add all changes in public/maps directory
+          git add public/maps/
+
+          # Check if there are changes to commit
+          $changes = git diff --staged --name-only
+          if (-not $changes) {
+            echo "No changes detected. Skipping PR creation."
+            exit 0
+          }
+
+          echo "Changes detected in the following files:"
+          echo $changes
+
+          # Commit changes
+          git commit -m "feat: extract map images from COH3 game files (v${{ steps.get_version.outputs.COH3_MINOR_VERSION }})
+
+          - Extracted ScenariosMP.sga from COH3 game files
+          - Converted map minimap RRTEX files to PNG and WebP format
+          - Organized images in public/maps/{map_code}/ structure
+          - Game version: ${{ steps.get_version.outputs.COH3_VERSION }}"
+
+          # Push the new branch
+          git push origin $BRANCH_NAME
+
+          # Read summary for PR body
+          $prBody = "## Map Image Extraction Summary`n`n"
+          $prBody += "- **Game Version**: ${{ steps.get_version.outputs.COH3_VERSION }}`n"
+          $prBody += "- **Minor Version**: ${{ steps.get_version.outputs.COH3_MINOR_VERSION }}`n"
+          $prBody += "- **Extraction Date**: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC')`n`n"
+
+          if (Test-Path "map_extraction_summary.md") {
+            $summaryContent = Get-Content "map_extraction_summary.md" -Raw
+            $prBody += $summaryContent
+          }
+
+          $prBody += "`n### Process`n"
+          $prBody += "1. Downloaded COH3 game files using SteamCMD`n"
+          $prBody += "2. Extracted ScenariosMP.sga archive using AOEMods.Essence tool`n"
+          $prBody += "3. Converted map minimap RRTEX files to PNG and WebP formats`n"
+          $prBody += "4. Organized images in \`public/maps/{map_code}/\` structure`n`n"
+          $prBody += "### Files Changed`n"
+          $prBody += "- Updated/added map images in \`public/maps/\``n"
+
+          # Create pull request using GitHub CLI
+          gh pr create --title "Extract map images from game files (v${{ steps.get_version.outputs.COH3_MINOR_VERSION }})" `
+                      --body $prBody `
+                      --base master `
+                      --head $BRANCH_NAME
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup temporary files
+        if: always()
+        run: |
+          echo "Cleaning up temporary files..."
+
+          # Remove large temporary directories to free up space
+          if (Test-Path "steamcmd") {
+            Remove-Item -Path "steamcmd" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "extracted_scenarios") {
+            Remove-Item -Path "extracted_scenarios" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "temp_map_conversion") {
+            Remove-Item -Path "temp_map_conversion" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "image-extractor") {
+            Remove-Item -Path "image-extractor" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+
+          echo "Cleanup completed"
+        shell: pwsh
+        continue-on-error: true
+
