@@ -139,18 +139,80 @@ jobs:
 
           echo "Found CLI executable at: $($cliExe.FullName)"
 
+          # Check if SGA file exists before extraction
+          $sgaPath = ".\steamcmd\coh3\anvil\archives\ScenariosMP.sga"
+          echo "Checking for SGA file at: $sgaPath"
+          if (-not (Test-Path $sgaPath)) {
+            echo "ERROR: ScenariosMP.sga not found at expected location!"
+            echo "Listing steamcmd\coh3 directory structure:"
+            if (Test-Path ".\steamcmd\coh3") {
+              Get-ChildItem -Path ".\steamcmd\coh3" -Recurse -Depth 2 | Select-Object FullName, Length
+            } else {
+              echo "steamcmd\coh3 directory does not exist!"
+            }
+
+            echo "Searching for .sga files in steamcmd\coh3:"
+            if (Test-Path ".\steamcmd\coh3") {
+              Get-ChildItem -Path ".\steamcmd\coh3" -Filter "*.sga" -Recurse | Select-Object FullName, Length
+            }
+            exit 1
+          }
+
+          echo "SGA file found. Size: $((Get-Item $sgaPath).Length) bytes"
+
           # Extract ScenariosMP.sga
           echo "Extracting ScenariosMP.sga..."
-          & $cliExe.FullName sga-unpack ".\steamcmd\coh3\anvil\archives\ScenariosMP.sga" "./extracted_scenarios"
+          echo "Command: $($cliExe.FullName) sga-unpack `"$sgaPath`" `"./extracted_scenarios`""
+
+          # Capture output and exit code
+          $extractOutput = & $cliExe.FullName sga-unpack $sgaPath "./extracted_scenarios" 2>&1
+          $extractExitCode = $LASTEXITCODE
+
+          echo "Extraction output:"
+          echo $extractOutput
+          echo "Extraction exit code: $extractExitCode"
+
+          # List what was actually extracted
+          echo "Listing extracted_scenarios directory contents:"
+          if (Test-Path ".\extracted_scenarios") {
+            Get-ChildItem -Path ".\extracted_scenarios" -Recurse -Depth 3 | Select-Object FullName, Length, PSIsContainer | Format-Table -AutoSize
+          } else {
+            echo "ERROR: extracted_scenarios directory was not created!"
+            exit 1
+          }
 
           # Verify extraction found expected folders
           $multiplayerPath = ".\extracted_scenarios\data\scenarios\multiplayer"
+          echo "Checking for multiplayer folder at: $multiplayerPath"
+
           if (Test-Path $multiplayerPath) {
             echo "Successfully extracted scenarios. Found multiplayer folder."
             $mapFolders = Get-ChildItem -Path $multiplayerPath -Directory
-            echo "Found $($mapFolders.Count) map folders"
+            echo "Found $($mapFolders.Count) map folders:"
+            $mapFolders | ForEach-Object { echo "  - $($_.Name)" }
           } else {
-            echo "ERROR: Multiplayer folder not found after extraction"
+            echo "ERROR: Multiplayer folder not found at expected path: $multiplayerPath"
+            echo ""
+            echo "Possible paths to check:"
+
+            # Try to find 'multiplayer' folder anywhere in extracted_scenarios
+            echo "Searching for 'multiplayer' folder in extracted_scenarios:"
+            $multiplayerFolders = Get-ChildItem -Path ".\extracted_scenarios" -Filter "multiplayer" -Recurse -Directory -ErrorAction SilentlyContinue
+            if ($multiplayerFolders) {
+              $multiplayerFolders | ForEach-Object { echo "  Found at: $($_.FullName)" }
+            } else {
+              echo "  No 'multiplayer' folder found anywhere in extracted files"
+            }
+
+            # Try to find 'scenarios' folder
+            echo "Searching for 'scenarios' folder in extracted_scenarios:"
+            $scenariosFolders = Get-ChildItem -Path ".\extracted_scenarios" -Filter "scenarios" -Recurse -Directory -ErrorAction SilentlyContinue
+            if ($scenariosFolders) {
+              $scenariosFolders | ForEach-Object { echo "  Found at: $($_.FullName)" }
+            } else {
+              echo "  No 'scenarios' folder found anywhere in extracted files"
+            }
+
             exit 1
           }
         shell: pwsh
