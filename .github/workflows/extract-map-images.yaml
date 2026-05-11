@@ -172,14 +172,14 @@ jobs:
           echo $extractOutput
           echo "Extraction exit code: $extractExitCode"
 
-          # List what was actually extracted
+          # List what was actually extracted (using Python for speed)
           echo "Listing extracted_scenarios directory contents:"
-          if (Test-Path ".\extracted_scenarios") {
-            Get-ChildItem -Path ".\extracted_scenarios" -Recurse -Depth 3 | Select-Object FullName, Length, PSIsContainer
-          } else {
+          if (-not (Test-Path ".\extracted_scenarios")) {
             echo "ERROR: extracted_scenarios directory was not created!"
             exit 1
           }
+
+          python -c "import os; [(print(os.path.join(root, f)) if root.count(os.sep) - 'extracted_scenarios'.count(os.sep) < 3 else None) for root, dirs, files in os.walk('extracted_scenarios') for f in files]"
 
           # Verify extraction found expected folders
           $multiplayerPath = ".\extracted_scenarios\scenarios\multiplayer"
