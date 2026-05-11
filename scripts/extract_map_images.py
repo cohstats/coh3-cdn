@@ -111,8 +111,25 @@ def convert_rrtex_to_png_webp(rrtex_path, image_extractor_path, output_dir, map_
         return False
 
 def convert_png_to_webp(png_path, webp_path):
-    """Convert PNG file to WebP format."""
+    """Convert PNG file to WebP format with max dimension of 300px."""
     image = Image.open(png_path)
+
+    # Resize image to have max dimension of 300px while maintaining aspect ratio
+    max_size = 300
+    width, height = image.size
+
+    if width > max_size or height > max_size:
+        # Calculate the scaling factor
+        if width > height:
+            new_width = max_size
+            new_height = int((max_size / width) * height)
+        else:
+            new_height = max_size
+            new_width = int((max_size / height) * width)
+
+        # Resize using high-quality resampling
+        image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
     image.save(webp_path, 'WEBP', quality=WEBP_QUALITY, lossless=False)
 
 def check_existing_files(maps_dir, map_code):
