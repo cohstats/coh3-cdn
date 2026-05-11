@@ -126,10 +126,6 @@ jobs:
           echo "Extracting AOEMods.Essence tool from tools/AOEMods.Essence-0.7.0.zip..."
           Expand-Archive -Path "tools/AOEMods.Essence-0.7.0.zip" -DestinationPath "tools/AOEMods.Essence" -Force
 
-          # List extracted contents to verify structure
-          echo "Listing extracted contents:"
-          Get-ChildItem -Path "tools/AOEMods.Essence" -Recurse | Select-Object FullName
-
           # Find the CLI executable
           $cliExe = Get-ChildItem -Path "tools/AOEMods.Essence" -Filter "AOEMods.Essence.CLI.exe" -Recurse | Select-Object -First 1
           if (-not $cliExe) {
