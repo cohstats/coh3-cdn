@@ -182,7 +182,7 @@ jobs:
           }
 
           # Verify extraction found expected folders
-          $multiplayerPath = ".\extracted_scenarios\data\scenarios\multiplayer"
+          $multiplayerPath = ".\extracted_scenarios\scenarios\multiplayer"
           echo "Checking for multiplayer folder at: $multiplayerPath"
 
           if (Test-Path $multiplayerPath) {
@@ -193,9 +193,6 @@ jobs:
           } else {
             echo "ERROR: Multiplayer folder not found at expected path: $multiplayerPath"
             echo ""
-            echo "Possible paths to check:"
-
-            # Try to find 'multiplayer' folder anywhere in extracted_scenarios
             echo "Searching for 'multiplayer' folder in extracted_scenarios:"
             $multiplayerFolders = Get-ChildItem -Path ".\extracted_scenarios" -Filter "multiplayer" -Recurse -Directory -ErrorAction SilentlyContinue
             if ($multiplayerFolders) {

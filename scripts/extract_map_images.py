@@ -14,21 +14,21 @@ def discover_map_folders(extracted_dir):
     Returns a list of tuples: (map_code, map_folder_path)
     """
     map_folders = []
-    
-    # Standard maps path
-    standard_maps_path = Path(extracted_dir) / "data" / "scenarios" / "multiplayer"
+
+    # Standard maps path (SGA extracts directly to scenarios/multiplayer)
+    standard_maps_path = Path(extracted_dir) / "scenarios" / "multiplayer"
     if standard_maps_path.exists():
         for item in standard_maps_path.iterdir():
             if item.is_dir() and item.name != "community":
                 map_folders.append((item.name, str(item)))
-    
+
     # Community maps path
-    community_maps_path = Path(extracted_dir) / "data" / "scenarios" / "multiplayer" / "community"
+    community_maps_path = Path(extracted_dir) / "scenarios" / "multiplayer" / "community"
     if community_maps_path.exists():
         for item in community_maps_path.iterdir():
             if item.is_dir():
                 map_folders.append((item.name, str(item)))
-    
+
     return map_folders
 
 def find_rrtex_file(map_folder, map_code):
