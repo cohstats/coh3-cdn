@@ -7,6 +7,8 @@ from PIL import Image
 
 # WebP conversion quality setting (0-100)
 WEBP_QUALITY = 85
+# In pixels
+MAP_IMAGE_SIZE = 400
 
 def discover_map_folders(extracted_dir):
     """
@@ -111,11 +113,11 @@ def convert_rrtex_to_png_webp(rrtex_path, image_extractor_path, output_dir, map_
         return False
 
 def convert_png_to_webp(png_path, webp_path):
-    """Convert PNG file to WebP format with max dimension of 300px."""
+    """Convert PNG file to WebP format with max dimension of 400px."""
     image = Image.open(png_path)
 
-    # Resize image to have max dimension of 300px while maintaining aspect ratio
-    max_size = 300
+    # Resize image to have max dimension of 400px while maintaining aspect ratio
+    max_size = MAP_IMAGE_SIZE
     width, height = image.size
 
     if width > max_size or height > max_size:

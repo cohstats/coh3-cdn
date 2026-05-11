@@ -175,7 +175,7 @@ jobs:
           # List what was actually extracted
           echo "Listing extracted_scenarios directory contents:"
           if (Test-Path ".\extracted_scenarios") {
-            Get-ChildItem -Path ".\extracted_scenarios" -Recurse -Depth 3 | Select-Object FullName, Length, PSIsContainer | Format-Table -AutoSize
+            Get-ChildItem -Path ".\extracted_scenarios" -Recurse -Depth 3 | Select-Object FullName, Length, PSIsContainer
           } else {
             echo "ERROR: extracted_scenarios directory was not created!"
             exit 1
