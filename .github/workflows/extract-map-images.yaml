@@ -218,7 +218,7 @@ jobs:
         if: steps.check_exe.outputs.EXE_EXISTS == 'true'
         run: |
           echo "Running map image extraction script..."
-          python scripts/extract_map_images.py --src "./extracted_scenarios" --image-extractor-path "./image-extractor" --output-dir "public/maps"
+          python scripts/extract_map_images.py --src "./extracted_scenarios" --image-extractor-path "./image-extractor" --output-dir "public/maps" --overwrite
         shell: pwsh
 
       - name: Generate extraction summary

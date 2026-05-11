@@ -22,7 +22,7 @@ jobs:
           
       - name: Run map images sync script
         run: |
-          python scripts/sync_map_images.py --overwrite
+          python scripts/sync_map_images.py
           
       - name: Check for changes and create PR if needed
         run: |
