@@ -1,0 +1,2 @@
+regex:anvil/archives/UI\.sga$
+regex:RelicCoH3\.exe$

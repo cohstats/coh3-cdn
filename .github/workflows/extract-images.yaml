@@ -30,54 +30,48 @@ jobs:
           pip install -r scripts/requirements.txt
         shell: pwsh
 
-      - name: Create SteamCMD directory
-        run: mkdir -p steamcmd
-        shell: bash
-
-      - name: Download SteamCMD
-        run: |
-          Invoke-WebRequest -Uri "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip" -OutFile "steamcmd.zip"
-          Expand-Archive -Path "steamcmd.zip" -DestinationPath "steamcmd" -Force
-        shell: pwsh
-
       - name: Create game directory
         run: mkdir -p coh3
         shell: bash
 
-      - name: Initialize SteamCMD
+      - name: Download DepotDownloader
         run: |
-          .\steamcmd\steamcmd.exe +quit
-        shell: pwsh
-        continue-on-error: true
-        timeout-minutes: 2
+          echo "Downloading latest DepotDownloader release..."
+          # Download the latest Windows x64 release
+          Invoke-WebRequest -Uri "https://github.com/SteamRE/DepotDownloader/releases/latest/download/DepotDownloader-windows-x64.zip" -OutFile "DepotDownloader.zip"
 
-      - name: Download COH3 using SteamCMD with direct command
-        id: direct_download
-        timeout-minutes: 60
-        run: |
-          # Use direct command line approach with all parameters - force_install_dir BEFORE login
-          .\steamcmd\steamcmd.exe +@NoPromptForPassword 1 +@ShutdownOnFailedCommand 1 +force_install_dir ./coh3 +login $env:STEAM_USERNAME $env:STEAM_PASSWORD +app_update $env:COH3_APP_ID validate +quit
+          echo "Extracting DepotDownloader..."
+          Expand-Archive -Path "DepotDownloader.zip" -DestinationPath "DepotDownloader" -Force
+
+          echo "DepotDownloader extracted successfully"
         shell: pwsh
 
-      - name: List SteamCMD logs
+      - name: Download COH3 files using DepotDownloader
+        id: download_game
+        timeout-minutes: 30
         run: |
-          echo "SteamCMD logs:"
-          if (Test-Path "steamcmd\logs") {
-            Get-ChildItem -Path "steamcmd\logs" -Recurse | ForEach-Object {
-              echo "Log file: $($_.FullName)"
-              Get-Content $_.FullName
-            }
-          } else {
-            echo "No logs directory found"
-          }
+          echo "Downloading COH3 files using DepotDownloader..."
+          echo "App ID: $env:COH3_APP_ID"
+          echo "Using filelist: .github/workflows/coh3-ui-filelist.txt"
+
+          # Download only the files we need (UI.sga and RelicCoH3.exe)
+          # This is much faster than downloading the entire ~50GB game
+          .\DepotDownloader\DepotDownloader.exe `
+            -app $env:COH3_APP_ID `
+            -username $env:STEAM_USERNAME `
+            -password $env:STEAM_PASSWORD `
+            -filelist ".github/workflows/coh3-ui-filelist.txt" `
+            -dir "./coh3" `
+            -validate
+
+          echo "Download completed"
         shell: pwsh
-        continue-on-error: true
 
       - name: Check RelicCoH3.exe
         id: check_exe
         run: |
           # Direct path to the executable
-          $exePath = ".\steamcmd\coh3\RelicCoH3.exe"
+          $exePath = ".\coh3\RelicCoH3.exe"
           if (Test-Path $exePath) {
             echo "EXE_EXISTS=true" >> $env:GITHUB_OUTPUT
             echo "RelicCoH3.exe found at the expected location"
@@ -91,7 +85,7 @@ jobs:
         id: get_version
         if: steps.check_exe.outputs.EXE_EXISTS == 'true'
         run: |
-          $exePath = ".\steamcmd\coh3\RelicCoH3.exe"
+          $exePath = ".\coh3\RelicCoH3.exe"
           $versionInfo = (Get-Item $exePath).VersionInfo
           $fileVersion = $versionInfo.FileVersion
           echo "COH3_VERSION=$fileVersion" >> $env:GITHUB_OUTPUT
@@ -141,9 +135,9 @@ jobs:
 
           echo "Found CLI executable at: $($cliExe.FullName)"
 
-          # Extract UI.sga - note the path is steamcmd\coh3
+          # Extract UI.sga
           echo "Extracting UI.sga..."
-          & $cliExe.FullName sga-unpack ".\steamcmd\coh3\anvil\archives\UI.sga" "./extracted_ui"
+          & $cliExe.FullName sga-unpack ".\coh3\anvil\archives\UI.sga" "./extracted_ui"
 
           # Verify extraction
           $rrtexFiles = Get-ChildItem -Path "extracted_ui" -Filter "*.rrtex" -Recurse
@@ -246,7 +240,7 @@ jobs:
           - **Extraction Date**: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
 
           ### Process
-          1. Downloaded COH3 game files using SteamCMD
+          1. Downloaded specific COH3 files using DepotDownloader (UI.sga + RelicCoH3.exe only)
           2. Extracted UI.sga archive using AOEMods.Essence tool
           3. Converted RRTEX files to WebP format using coh3-image-extractor
           4. Organized images in structured and flattened directories
@@ -317,8 +311,11 @@ jobs:
           echo "Cleaning up temporary files..."
 
           # Remove large temporary directories to free up space
-          if (Test-Path "steamcmd") {
-            Remove-Item -Path "steamcmd" -Recurse -Force -ErrorAction SilentlyContinue
+          if (Test-Path "DepotDownloader") {
+            Remove-Item -Path "DepotDownloader" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "coh3") {
+            Remove-Item -Path "coh3" -Recurse -Force -ErrorAction SilentlyContinue
           }
           if (Test-Path "extracted_ui") {
             Remove-Item -Path "extracted_ui" -Recurse -Force -ErrorAction SilentlyContinue
@@ -329,7 +326,7 @@ jobs:
           if (Test-Path "image-extractor") {
             Remove-Item -Path "image-extractor" -Recurse -Force -ErrorAction SilentlyContinue
           }
-          
+
           echo "Cleanup completed"
         shell: pwsh
         continue-on-error: true
