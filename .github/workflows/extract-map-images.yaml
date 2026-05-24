@@ -28,54 +28,48 @@ jobs:
           pip install -r scripts/requirements.txt
         shell: pwsh
 
-      - name: Create SteamCMD directory
-        run: mkdir -p steamcmd
-        shell: bash
-
-      - name: Download SteamCMD
-        run: |
-          Invoke-WebRequest -Uri "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip" -OutFile "steamcmd.zip"
-          Expand-Archive -Path "steamcmd.zip" -DestinationPath "steamcmd" -Force
-        shell: pwsh
-
       - name: Create game directory
         run: mkdir -p coh3
         shell: bash
 
-      - name: Initialize SteamCMD
+      - name: Download DepotDownloader
         run: |
-          .\steamcmd\steamcmd.exe +quit
-        shell: pwsh
-        continue-on-error: true
-        timeout-minutes: 2
+          echo "Downloading latest DepotDownloader release..."
+          # Download the latest Windows x64 release
+          Invoke-WebRequest -Uri "https://github.com/SteamRE/DepotDownloader/releases/latest/download/DepotDownloader-windows-x64.zip" -OutFile "DepotDownloader.zip"
 
-      - name: Download COH3 using SteamCMD
+          echo "Extracting DepotDownloader..."
+          Expand-Archive -Path "DepotDownloader.zip" -DestinationPath "DepotDownloader" -Force
+
+          echo "DepotDownloader extracted successfully"
+        shell: pwsh
+
+      - name: Download COH3 files using DepotDownloader
         id: download_game
-        timeout-minutes: 60
+        timeout-minutes: 30
         run: |
-          # Use direct command line approach with all parameters - force_install_dir BEFORE login
-          .\steamcmd\steamcmd.exe +@NoPromptForPassword 1 +@ShutdownOnFailedCommand 1 +force_install_dir ./coh3 +login $env:STEAM_USERNAME $env:STEAM_PASSWORD +app_update $env:COH3_APP_ID validate +quit
-        shell: pwsh
+          echo "Downloading COH3 files using DepotDownloader..."
+          echo "App ID: $env:COH3_APP_ID"
+          echo "Using filelist: .github/workflows/coh3-filelist.txt"
 
-      - name: List SteamCMD logs
-        run: |
-          echo "SteamCMD logs:"
-          if (Test-Path "steamcmd\logs") {
-            Get-ChildItem -Path "steamcmd\logs" -Recurse | ForEach-Object {
-              echo "Log file: $($_.FullName)"
-              Get-Content $_.FullName
-            }
-          } else {
-            echo "No logs directory found"
-          }
+          # Download only the files we need (ScenariosMP.sga and RelicCoH3.exe)
+          # This is much faster than downloading the entire ~50GB game
+          .\DepotDownloader\DepotDownloader.exe `
+            -app $env:COH3_APP_ID `
+            -username $env:STEAM_USERNAME `
+            -password $env:STEAM_PASSWORD `
+            -filelist ".github/workflows/coh3-filelist.txt" `
+            -dir "./coh3" `
+            -validate
+
+          echo "Download completed"
         shell: pwsh
-        continue-on-error: true
 
       - name: Check RelicCoH3.exe
         id: check_exe
         run: |
           # Direct path to the executable
-          $exePath = ".\steamcmd\coh3\RelicCoH3.exe"
+          $exePath = ".\coh3\RelicCoH3.exe"
           if (Test-Path $exePath) {
             echo "EXE_EXISTS=true" >> $env:GITHUB_OUTPUT
             echo "RelicCoH3.exe found at the expected location"
@@ -89,7 +83,7 @@ jobs:
         id: get_version
         if: steps.check_exe.outputs.EXE_EXISTS == 'true'
         run: |
-          $exePath = ".\steamcmd\coh3\RelicCoH3.exe"
+          $exePath = ".\coh3\RelicCoH3.exe"
           $versionInfo = (Get-Item $exePath).VersionInfo
           $fileVersion = $versionInfo.FileVersion
           echo "COH3_VERSION=$fileVersion" >> $env:GITHUB_OUTPUT
@@ -136,20 +130,20 @@ jobs:
           echo "Found CLI executable at: $($cliExe.FullName)"
 
           # Check if SGA file exists before extraction
-          $sgaPath = ".\steamcmd\coh3\anvil\archives\ScenariosMP.sga"
+          $sgaPath = ".\coh3\anvil\archives\ScenariosMP.sga"
           echo "Checking for SGA file at: $sgaPath"
           if (-not (Test-Path $sgaPath)) {
             echo "ERROR: ScenariosMP.sga not found at expected location!"
-            echo "Listing steamcmd\coh3 directory structure:"
-            if (Test-Path ".\steamcmd\coh3") {
-              Get-ChildItem -Path ".\steamcmd\coh3" -Recurse -Depth 2 | Select-Object FullName, Length
+            echo "Listing coh3 directory structure:"
+            if (Test-Path ".\coh3") {
+              Get-ChildItem -Path ".\coh3" -Recurse -Depth 2 | Select-Object FullName, Length
             } else {
-              echo "steamcmd\coh3 directory does not exist!"
+              echo "coh3 directory does not exist!"
             }
 
-            echo "Searching for .sga files in steamcmd\coh3:"
-            if (Test-Path ".\steamcmd\coh3") {
-              Get-ChildItem -Path ".\steamcmd\coh3" -Filter "*.sga" -Recurse | Select-Object FullName, Length
+            echo "Searching for .sga files in coh3:"
+            if (Test-Path ".\coh3") {
+              Get-ChildItem -Path ".\coh3" -Filter "*.sga" -Recurse | Select-Object FullName, Length
             }
             exit 1
           }
@@ -280,7 +274,7 @@ jobs:
           }
 
           $prBody += "`n### Process`n"
-          $prBody += "1. Downloaded COH3 game files using SteamCMD`n"
+          $prBody += "1. Downloaded specific COH3 files using DepotDownloader (ScenariosMP.sga + RelicCoH3.exe only)`n"
           $prBody += "2. Extracted ScenariosMP.sga archive using AOEMods.Essence tool`n"
           $prBody += "3. Converted map minimap RRTEX files to PNG and WebP formats`n"
           $prBody += "4. Organized images in \`public/maps/{map_code}/\` structure`n`n"
@@ -302,8 +296,11 @@ jobs:
           echo "Cleaning up temporary files..."
 
           # Remove large temporary directories to free up space
-          if (Test-Path "steamcmd") {
-            Remove-Item -Path "steamcmd" -Recurse -Force -ErrorAction SilentlyContinue
+          if (Test-Path "DepotDownloader") {
+            Remove-Item -Path "DepotDownloader" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "coh3") {
+            Remove-Item -Path "coh3" -Recurse -Force -ErrorAction SilentlyContinue
           }
           if (Test-Path "extracted_scenarios") {
             Remove-Item -Path "extracted_scenarios" -Recurse -Force -ErrorAction SilentlyContinue
