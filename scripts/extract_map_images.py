@@ -9,6 +9,7 @@ from PIL import Image
 WEBP_QUALITY = 85
 # In pixels
 MAP_IMAGE_SIZE = 400
+MAP_IMAGE_SIZE_LARGE = 800
 
 def discover_map_folders(extracted_dir):
     """
@@ -101,8 +102,9 @@ def convert_rrtex_to_png_webp(rrtex_path, image_extractor_path, output_dir, map_
         shutil.copy2(png_file, final_png)
         
         # Convert PNG to WebP
-        convert_png_to_webp(str(final_png), str(Path(output_dir) / f"{map_code}.webp"))
-        
+        convert_png_to_webp(str(final_png), str(Path(output_dir) / f"{map_code}.webp"), MAP_IMAGE_SIZE)
+        convert_png_to_webp(str(final_png), str(Path(output_dir) / f"{map_code}.800.webp"), MAP_IMAGE_SIZE_LARGE)
+
         # Cleanup temp directory
         shutil.rmtree(temp_dir, ignore_errors=True)
         
@@ -112,12 +114,10 @@ def convert_rrtex_to_png_webp(rrtex_path, image_extractor_path, output_dir, map_
         print(f"Error converting {rrtex_path}: {str(e)}")
         return False
 
-def convert_png_to_webp(png_path, webp_path):
-    """Convert PNG file to WebP format with max dimension of 400px."""
+def convert_png_to_webp(png_path, webp_path, max_size):
+    """Convert PNG file to WebP format, capping the max dimension at max_size (never upscaled)."""
     image = Image.open(png_path)
 
-    # Resize image to have max dimension of 400px while maintaining aspect ratio
-    max_size = MAP_IMAGE_SIZE
     width, height = image.size
 
     if width > max_size or height > max_size:
@@ -137,13 +137,14 @@ def convert_png_to_webp(png_path, webp_path):
 def check_existing_files(maps_dir, map_code):
     """
     Check if PNG and WebP files already exist for the map.
-    Returns True if both exist, False otherwise.
+    Returns True if all exist, False otherwise.
     """
     map_folder = Path(maps_dir) / map_code
     png_path = map_folder / f"{map_code}.png"
     webp_path = map_folder / f"{map_code}.webp"
-    
-    return png_path.exists() and webp_path.exists()
+    webp_large_path = map_folder / f"{map_code}.800.webp"
+
+    return png_path.exists() and webp_path.exists() and webp_large_path.exists()
 
 def organize_map_images(temp_files_dir, maps_dir, map_code):
     """
@@ -156,12 +157,16 @@ def organize_map_images(temp_files_dir, maps_dir, map_code):
     # Move PNG and WebP files
     png_source = Path(temp_files_dir) / f"{map_code}.png"
     webp_source = Path(temp_files_dir) / f"{map_code}.webp"
-    
+    webp_large_source = Path(temp_files_dir) / f"{map_code}.800.webp"
+
     if png_source.exists():
         shutil.copy2(png_source, map_folder / f"{map_code}.png")
-    
+
     if webp_source.exists():
         shutil.copy2(webp_source, map_folder / f"{map_code}.webp")
+
+    if webp_large_source.exists():
+        shutil.copy2(webp_large_source, map_folder / f"{map_code}.800.webp")
 
 def generate_summary_report(processed, skipped, errors):
     """
@@ -286,7 +291,7 @@ def main():
 
         # Organize the files into the maps directory
         organize_map_images(temp_dir, maps_dir, map_code)
-        print(f"  Success: Created {map_code}.png and {map_code}.webp\n")
+        print(f"  Success: Created {map_code}.png, {map_code}.webp and {map_code}.800.webp\n")
         processed.append(map_code)
 
     # Clean up temporary directory
