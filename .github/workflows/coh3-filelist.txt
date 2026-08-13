@@ -1,0 +1,2 @@
+regex:anvil/archives/ScenariosMP\.sga$
+regex:RelicCoH3\.exe$

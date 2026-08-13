@@ -1,0 +1,320 @@
+name: Extract Map Images from COH3
+
+on:
+  workflow_dispatch: # Manual trigger only
+
+jobs:
+  extract_map_images:
+    name: Extract and Convert COH3 Map Images
+    runs-on: windows-2022 # Using Windows runner to handle Windows executables
+    timeout-minutes: 180 # Extended timeout for game download and map extraction
+
+    env:
+      STEAM_USERNAME: ${{ secrets.STEAM_USERNAME_COH3 }}
+      STEAM_PASSWORD: ${{ secrets.STEAM_PASSWORD_COH3 }}
+      COH3_APP_ID: 1677280
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r scripts/requirements.txt
+        shell: pwsh
+
+      - name: Create game directory
+        run: mkdir -p coh3
+        shell: bash
+
+      - name: Download DepotDownloader
+        run: |
+          echo "Downloading latest DepotDownloader release..."
+          # Download the latest Windows x64 release
+          Invoke-WebRequest -Uri "https://github.com/SteamRE/DepotDownloader/releases/latest/download/DepotDownloader-windows-x64.zip" -OutFile "DepotDownloader.zip"
+
+          echo "Extracting DepotDownloader..."
+          Expand-Archive -Path "DepotDownloader.zip" -DestinationPath "DepotDownloader" -Force
+
+          echo "DepotDownloader extracted successfully"
+        shell: pwsh
+
+      - name: Download COH3 files using DepotDownloader
+        id: download_game
+        timeout-minutes: 30
+        run: |
+          echo "Downloading COH3 files using DepotDownloader..."
+          echo "App ID: $env:COH3_APP_ID"
+          echo "Using filelist: .github/workflows/coh3-filelist.txt"
+
+          # Download only the files we need (ScenariosMP.sga and RelicCoH3.exe)
+          # This is much faster than downloading the entire ~50GB game
+          .\DepotDownloader\DepotDownloader.exe `
+            -app $env:COH3_APP_ID `
+            -username $env:STEAM_USERNAME `
+            -password $env:STEAM_PASSWORD `
+            -filelist ".github/workflows/coh3-filelist.txt" `
+            -dir "./coh3" `
+            -validate
+
+          echo "Download completed"
+        shell: pwsh
+
+      - name: Check RelicCoH3.exe
+        id: check_exe
+        run: |
+          # Direct path to the executable
+          $exePath = ".\coh3\RelicCoH3.exe"
+          if (Test-Path $exePath) {
+            echo "EXE_EXISTS=true" >> $env:GITHUB_OUTPUT
+            echo "RelicCoH3.exe found at the expected location"
+          } else {
+            echo "EXE_EXISTS=false" >> $env:GITHUB_OUTPUT
+            echo "RelicCoH3.exe not found at the expected location"
+          }
+        shell: pwsh
+
+      - name: Get COH3 Version
+        id: get_version
+        if: steps.check_exe.outputs.EXE_EXISTS == 'true'
+        run: |
+          $exePath = ".\coh3\RelicCoH3.exe"
+          $versionInfo = (Get-Item $exePath).VersionInfo
+          $fileVersion = $versionInfo.FileVersion
+          echo "COH3_VERSION=$fileVersion" >> $env:GITHUB_OUTPUT
+          echo "COH3 Version: $fileVersion"
+
+          # Extract minor version using regex
+          if ($fileVersion -match '(\d+)\.(\d+)\.(\d+)\.(\d+)') {
+            $minorVersion = $matches[3]
+            echo "COH3_MINOR_VERSION=$minorVersion" >> $env:GITHUB_OUTPUT
+            echo "COH3 Minor Version: $minorVersion"
+          } else {
+            echo "Failed to extract minor version from $fileVersion"
+          }
+        shell: pwsh
+
+      - name: Clone coh3-image-extractor repository
+        if: steps.check_exe.outputs.EXE_EXISTS == 'true'
+        run: |
+          git clone https://github.com/cohstats/coh3-image-extractor.git image-extractor
+          echo "Image extractor repository cloned successfully"
+        shell: pwsh
+
+      - name: Install image extractor dependencies
+        if: steps.check_exe.outputs.EXE_EXISTS == 'true'
+        run: |
+          cd image-extractor
+          pip install -r requirements.txt
+        shell: pwsh
+
+      - name: Extract ScenariosMP.sga using AOEMods.Essence tool
+        if: steps.check_exe.outputs.EXE_EXISTS == 'true'
+        run: |
+          # Extract AOEMods.Essence tool from local tools directory
+          echo "Extracting AOEMods.Essence tool from tools/AOEMods.Essence-0.7.0.zip..."
+          Expand-Archive -Path "tools/AOEMods.Essence-0.7.0.zip" -DestinationPath "tools/AOEMods.Essence" -Force
+
+          # Find the CLI executable
+          $cliExe = Get-ChildItem -Path "tools/AOEMods.Essence" -Filter "AOEMods.Essence.CLI.exe" -Recurse | Select-Object -First 1
+          if (-not $cliExe) {
+            echo "ERROR: AOEMods.Essence.CLI.exe not found in extracted files"
+            exit 1
+          }
+
+          echo "Found CLI executable at: $($cliExe.FullName)"
+
+          # Check if SGA file exists before extraction
+          $sgaPath = ".\coh3\anvil\archives\ScenariosMP.sga"
+          echo "Checking for SGA file at: $sgaPath"
+          if (-not (Test-Path $sgaPath)) {
+            echo "ERROR: ScenariosMP.sga not found at expected location!"
+            echo "Listing coh3 directory structure:"
+            if (Test-Path ".\coh3") {
+              Get-ChildItem -Path ".\coh3" -Recurse -Depth 2 | Select-Object FullName, Length
+            } else {
+              echo "coh3 directory does not exist!"
+            }
+
+            echo "Searching for .sga files in coh3:"
+            if (Test-Path ".\coh3") {
+              Get-ChildItem -Path ".\coh3" -Filter "*.sga" -Recurse | Select-Object FullName, Length
+            }
+            exit 1
+          }
+
+          echo "SGA file found. Size: $((Get-Item $sgaPath).Length) bytes"
+
+          # Extract ScenariosMP.sga
+          echo "Extracting ScenariosMP.sga..."
+          echo "Command: $($cliExe.FullName) sga-unpack `"$sgaPath`" `"./extracted_scenarios`""
+
+          # Capture output and exit code
+          $extractOutput = & $cliExe.FullName sga-unpack $sgaPath "./extracted_scenarios" 2>&1
+          $extractExitCode = $LASTEXITCODE
+
+          echo "Extraction output:"
+          echo $extractOutput
+          echo "Extraction exit code: $extractExitCode"
+
+          # List what was actually extracted (using Python for speed)
+          echo "Listing extracted_scenarios directory contents:"
+          if (-not (Test-Path ".\extracted_scenarios")) {
+            echo "ERROR: extracted_scenarios directory was not created!"
+            exit 1
+          }
+
+          python -c "import os; [(print(os.path.join(root, f)) if root.count(os.sep) - 'extracted_scenarios'.count(os.sep) < 3 else None) for root, dirs, files in os.walk('extracted_scenarios') for f in files]"
+
+          # Verify extraction found expected folders
+          $multiplayerPath = ".\extracted_scenarios\scenarios\multiplayer"
+          echo "Checking for multiplayer folder at: $multiplayerPath"
+
+          if (Test-Path $multiplayerPath) {
+            echo "Successfully extracted scenarios. Found multiplayer folder."
+            $mapFolders = Get-ChildItem -Path $multiplayerPath -Directory
+            echo "Found $($mapFolders.Count) map folders:"
+            $mapFolders | ForEach-Object { echo "  - $($_.Name)" }
+          } else {
+            echo "ERROR: Multiplayer folder not found at expected path: $multiplayerPath"
+            echo ""
+            echo "Searching for 'multiplayer' folder in extracted_scenarios:"
+            $multiplayerFolders = Get-ChildItem -Path ".\extracted_scenarios" -Filter "multiplayer" -Recurse -Directory -ErrorAction SilentlyContinue
+            if ($multiplayerFolders) {
+              $multiplayerFolders | ForEach-Object { echo "  Found at: $($_.FullName)" }
+            } else {
+              echo "  No 'multiplayer' folder found anywhere in extracted files"
+            }
+
+            # Try to find 'scenarios' folder
+            echo "Searching for 'scenarios' folder in extracted_scenarios:"
+            $scenariosFolders = Get-ChildItem -Path ".\extracted_scenarios" -Filter "scenarios" -Recurse -Directory -ErrorAction SilentlyContinue
+            if ($scenariosFolders) {
+              $scenariosFolders | ForEach-Object { echo "  Found at: $($_.FullName)" }
+            } else {
+              echo "  No 'scenarios' folder found anywhere in extracted files"
+            }
+
+            exit 1
+          }
+        shell: pwsh
+
+      - name: Run map image extraction script
+        if: steps.check_exe.outputs.EXE_EXISTS == 'true'
+        run: |
+          echo "Running map image extraction script..."
+          python scripts/extract_map_images.py --src "./extracted_scenarios" --image-extractor-path "./image-extractor" --output-dir "public/maps" --overwrite
+        shell: pwsh
+
+      - name: Generate extraction summary
+        if: steps.check_exe.outputs.EXE_EXISTS == 'true'
+        run: |
+          echo "Extraction completed. Summary:"
+          if (Test-Path "map_extraction_summary.md") {
+            Get-Content "map_extraction_summary.md"
+          } else {
+            echo "No summary file generated"
+          }
+        shell: pwsh
+
+      - name: Setup GitHub CLI
+        run: |
+          choco install gh -y
+        shell: pwsh
+
+      - name: Create Pull Request with extracted map images
+        if: steps.check_exe.outputs.EXE_EXISTS == 'true'
+        run: |
+          # Configure git
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+
+          # Create new branch with timestamp and version
+          $BRANCH_NAME="map-extraction-v${{ steps.get_version.outputs.COH3_MINOR_VERSION }}-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+          git checkout -b $BRANCH_NAME
+
+          # Add all changes in public/maps directory
+          git add public/maps/
+
+          # Check if there are changes to commit
+          $changes = git diff --staged --name-only
+          if (-not $changes) {
+            echo "No changes detected. Skipping PR creation."
+            exit 0
+          }
+
+          echo "Changes detected in the following files:"
+          echo $changes
+
+          # Commit changes
+          git commit -m "feat: extract map images from COH3 game files (v${{ steps.get_version.outputs.COH3_MINOR_VERSION }})
+
+          - Extracted ScenariosMP.sga from COH3 game files
+          - Converted map minimap RRTEX files to PNG and WebP format
+          - Organized images in public/maps/{map_code}/ structure
+          - Game version: ${{ steps.get_version.outputs.COH3_VERSION }}"
+
+          # Push the new branch
+          git push origin $BRANCH_NAME
+
+          # Read summary for PR body
+          $prBody = "## Map Image Extraction Summary`n`n"
+          $prBody += "- **Game Version**: ${{ steps.get_version.outputs.COH3_VERSION }}`n"
+          $prBody += "- **Minor Version**: ${{ steps.get_version.outputs.COH3_MINOR_VERSION }}`n"
+          $prBody += "- **Extraction Date**: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC')`n`n"
+
+          if (Test-Path "map_extraction_summary.md") {
+            $summaryContent = Get-Content "map_extraction_summary.md" -Raw
+            $prBody += $summaryContent
+          }
+
+          $prBody += "`n### Process`n"
+          $prBody += "1. Downloaded specific COH3 files using DepotDownloader (ScenariosMP.sga + RelicCoH3.exe only)`n"
+          $prBody += "2. Extracted ScenariosMP.sga archive using AOEMods.Essence tool`n"
+          $prBody += "3. Converted map minimap RRTEX files to PNG and WebP formats`n"
+          $prBody += "4. Organized images in \`public/maps/{map_code}/\` structure`n`n"
+          $prBody += "### Files Changed`n"
+          $prBody += "- Updated/added map images in \`public/maps/\``n"
+
+          # Create pull request using GitHub CLI
+          gh pr create --title "Extract map images from game files (v${{ steps.get_version.outputs.COH3_MINOR_VERSION }})" `
+                      --body $prBody `
+                      --base master `
+                      --head $BRANCH_NAME
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup temporary files
+        if: always()
+        run: |
+          echo "Cleaning up temporary files..."
+
+          # Remove large temporary directories to free up space
+          if (Test-Path "DepotDownloader") {
+            Remove-Item -Path "DepotDownloader" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "coh3") {
+            Remove-Item -Path "coh3" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "extracted_scenarios") {
+            Remove-Item -Path "extracted_scenarios" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "temp_map_conversion") {
+            Remove-Item -Path "temp_map_conversion" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          if (Test-Path "image-extractor") {
+            Remove-Item -Path "image-extractor" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+
+          echo "Cleanup completed"
+        shell: pwsh
+        continue-on-error: true
+
